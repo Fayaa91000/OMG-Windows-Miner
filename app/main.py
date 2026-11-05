@@ -1,5 +1,6 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
+from miner_controller import MinerController
 
 BG = "#101827"
 FG = "#ffffff"
@@ -93,19 +94,99 @@ status = tk.Label(
 )
 status.pack(pady=15)
 
-tk.Button(
-    container,
-    text="START MINING — ENGINE NOT READY",
-    state="disabled",
-    bg=ACCENT, fg=FG,
-    font=("Arial", 11, "bold")
-).pack(fill="x", pady=5)
+controller = MinerController()
+accepted = 0
+speed = "—"
 
-tk.Button(
+def start_mining():
+    global accepted, speed
+
+    try:
+        controller.start(
+            wallet.get(),
+            threads.get(),
+            mode.get()
+        )
+    except Exception as error:
+        messagebox.showerror("OMG Miner", str(error))
+        return
+
+    accepted = 0
+    speed = "—"
+    start_button.config(state="disabled")
+    stop_button.config(state="normal")
+    status.config(text="Starting XMRig...")
+    timer.config(text="02:00:00")
+
+
+def stop_mining():
+    controller.stop("Stopped by user")
+    start_button.config(state="normal")
+    stop_button.config(state="disabled")
+    status.config(text="Stopped by user")
+
+
+start_button = tk.Button(
+    container,
+    text="START MINING",
+    command=start_mining,
+    bg=ACCENT,
+    fg=FG,
+    font=("Arial", 11, "bold")
+)
+start_button.pack(fill="x", pady=5)
+
+stop_button = tk.Button(
     container,
     text="STOP MINING",
+    command=stop_mining,
     state="disabled"
-).pack(fill="x", pady=5)
+)
+stop_button.pack(fill="x", pady=5)
+
+
+def refresh_status():
+    global accepted, speed
+
+    while not controller.events.empty():
+        kind, value = controller.events.get_nowait()
+
+        if kind == "hashrate":
+            speed = str(value) + " H/s"
+        elif kind == "accepted":
+            accepted += int(value)
+        elif kind in ("error", "log"):
+            status.config(text=str(value))
+        elif kind == "status":
+            status.config(text=str(value))
+
+    running = controller.is_running()
+
+    if running:
+        start_button.config(state="disabled")
+        stop_button.config(state="normal")
+        seconds = controller.remaining_seconds()
+
+        timer.config(text=f"{seconds//3600:02d}:"
+                          f"{(seconds//60)%60:02d}:"
+                          f"{seconds%60:02d}")
+
+        status.config(
+            text=f"Mining active\n"
+                 f"Hashrate: {speed}\n"
+                 f"Accepted shares: {accepted}"
+        )
+
+    root.after(1000, refresh_status)
+
+
+def close_app():
+    controller.stop("Application closed")
+    root.destroy()
+
+
+root.protocol("WM_DELETE_WINDOW", close_app)
+root.after(1000, refresh_status)
 
 tk.Label(
     container,
