@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from miner_controller import MinerController
+import threading
 
 BG = "#101827"
 FG = "#ffffff"
@@ -119,11 +120,33 @@ def start_mining():
     timer.config(text="02:00:00")
 
 
+stop_pending = False
+shutdown_done = threading.Event()
+
 def stop_mining():
-    controller.stop("Stopped by user")
-    start_button.config(state="normal")
+    global stop_pending
+
+    if stop_pending:
+        return
+
+    stop_pending = True
+    shutdown_done.clear()
+    start_button.config(state="disabled")
     stop_button.config(state="disabled")
-    status.config(text="Stopped by user")
+    status.config(text="Stopping XMRig safely...")
+
+    def shutdown():
+        global stop_pending
+        try:
+            controller.stop("Stopped by user")
+        finally:
+            shutdown_done.set()
+
+    threading.Thread(
+        target=shutdown,
+        daemon=True,
+        name="omg-stop-worker"
+    ).start()
 
 
 start_button = tk.Button(
@@ -146,7 +169,13 @@ stop_button.pack(fill="x", pady=5)
 
 
 def refresh_status():
-    global accepted, speed
+    global accepted, speed, stop_pending
+
+    if stop_pending and shutdown_done.is_set():
+        stop_pending = False
+        shutdown_done.clear()
+        start_button.config(state="normal")
+        stop_button.config(state="disabled")
 
     while not controller.events.empty():
         kind, value = controller.events.get_nowait()
@@ -164,7 +193,9 @@ def refresh_status():
 
     if running:
         start_button.config(state="disabled")
-        stop_button.config(state="normal")
+        stop_button.config(
+            state="disabled" if stop_pending else "normal"
+        )
         seconds = controller.remaining_seconds()
 
         timer.config(text=f"{seconds//3600:02d}:"
@@ -177,12 +208,67 @@ def refresh_status():
                  f"Accepted shares: {accepted}"
         )
 
+    elif not stop_pending:
+        start_button.config(state="normal")
+        stop_button.config(state="disabled")
+
     root.after(1000, refresh_status)
 
 
+closing_app = False
+
 def close_app():
-    controller.stop("Application closed")
-    root.destroy()
+    global closing_app
+
+    if closing_app:
+        return
+
+    closing_app = True
+    start_button.config(state="disabled")
+    stop_button.config(state="disabled")
+    status.config(text="Closing OMG Miner safely...")
+
+    finished = threading.Event()
+    errors = []
+
+    def shutdown():
+        try:
+            controller.stop("Application closed")
+        except Exception as exc:
+            errors.append(str(exc))
+        finally:
+            finished.set()
+
+    def check_shutdown():
+        global closing_app
+
+        if not finished.is_set():
+            root.after(100, check_shutdown)
+            return
+
+        if errors or controller.is_running():
+            closing_app = False
+            status.config(
+                text="Could not stop miner safely: " +
+                (errors[0] if errors else "Process still running")
+            )
+            stop_button.config(state="normal")
+            messagebox.showerror(
+                "OMG Miner",
+                "Mining may still be active. "
+                "Please stop the miner before closing."
+            )
+            return
+
+        root.destroy()
+
+    threading.Thread(
+        target=shutdown,
+        daemon=True,
+        name="omg-close-worker"
+    ).start()
+
+    root.after(100, check_shutdown)
 
 
 root.protocol("WM_DELETE_WINDOW", close_app)

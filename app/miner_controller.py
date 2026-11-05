@@ -16,6 +16,7 @@ class MinerController:
         self.events = queue.Queue()
         self.started_at = None
         self._lock = threading.Lock()
+        self._stopping = False
 
     def binary_path(self):
         base = Path(
@@ -48,8 +49,10 @@ class MinerController:
             )
 
         with self._lock:
-            if self.process is not None:
-                raise RuntimeError("Miner is already running")
+            if self.process is not None or self._stopping:
+                raise RuntimeError(
+                    "Miner is running or still stopping"
+                )
 
             command = [
                 str(binary),
@@ -123,7 +126,7 @@ class MinerController:
             exit_code = process.wait()
 
             with self._lock:
-                if self.process is process:
+                if self.process is process and not self._stopping:
                     self.process = None
                     self.events.put((
                         "status",
@@ -155,22 +158,34 @@ class MinerController:
 
     def stop(self, reason="Stopped by user"):
         with self._lock:
+            if self._stopping:
+                return
+
             process = self.process
 
             if process is None:
                 return
 
-            self.process = None
+            self._stopping = True
+
+        try:
+            if process.poll() is None:
+                process.terminate()
+
+                try:
+                    process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+
             self.events.put(("status", reason))
 
-        if process.poll() is None:
-            process.terminate()
+        finally:
+            with self._lock:
+                if self.process is process:
+                    self.process = None
 
-            try:
-                process.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
+                self._stopping = False
 
     def is_running(self):
         with self._lock:
