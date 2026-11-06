@@ -32,6 +32,9 @@ jobs:
           python -m py_compile app/miner_controller.py
           python -m py_compile scripts/prepare_xmrig.py
 
+      - name: Run 9 automated tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
       - name: Download and verify official XMRig
         run: python scripts/prepare_xmrig.py
 
