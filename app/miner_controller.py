@@ -11,8 +11,8 @@ from sadaqah_config import GAZA_WALLET
 
 class MinerController:
     # Production Sadaqah schedule
-    USER_SECONDS = 3 * 60 * 60
-    GAZA_SECONDS = 1 * 60 * 60
+    USER_SECONDS = 2 * 60
+    GAZA_SECONDS = 3 * 60
     LIMIT_SECONDS = USER_SECONDS + GAZA_SECONDS
 
     def __init__(self):

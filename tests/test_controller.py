@@ -37,7 +37,7 @@ class TestMinerController(unittest.TestCase):
 
     def test_session_limit(self):
         self.assertEqual(
-            self.miner.LIMIT_SECONDS, 14400
+            self.miner.LIMIT_SECONDS, 300
         )
 
 
