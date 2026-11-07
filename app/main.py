@@ -60,7 +60,11 @@ tk.Label(
     bg=BG, fg=FG
 ).pack(pady=(15, 5))
 
-threads = tk.IntVar(value=3)
+# Conservative default based on available logical processors.
+import os
+available_cpus = os.cpu_count() or 2
+recommended_threads = max(1, min(6, available_cpus // 2))
+threads = tk.IntVar(value=recommended_threads)
 
 tk.Scale(
     container, from_=1, to=6,

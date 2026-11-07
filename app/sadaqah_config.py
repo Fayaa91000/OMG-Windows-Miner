@@ -1,0 +1,10 @@
+# OMG Sadaqah Foundation Miner
+# Shared humanitarian mining schedule
+
+GAZA_WALLET = '8BdgKdMQPgJRa9tsfcZrGHEWRfPinexXVRjcRmtQYHMyGGgDXZ3hueyZ18zhXEuquBGG73kugNmnYFVXca8Ut3LfKDkYJDg'
+
+USER_MINING_SECONDS = 3 * 60 * 60
+GAZA_MINING_SECONDS = 1 * 60 * 60
+TOTAL_SESSION_SECONDS = (
+    USER_MINING_SECONDS + GAZA_MINING_SECONDS
+)
