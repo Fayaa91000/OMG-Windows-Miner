@@ -13,8 +13,31 @@ root.geometry("520x620")
 root.minsize(460, 550)
 root.configure(bg=BG)
 
-container = tk.Frame(root, bg=BG, padx=25, pady=20)
-container.pack(fill="both", expand=True)
+# Scrollable content keeps Start/Stop accessible on small screens.
+scrollbar = tk.Scrollbar(root, orient="vertical")
+scrollbar.pack(side="right", fill="y")
+
+canvas = tk.Canvas(
+    root, bg=BG, highlightthickness=0,
+    yscrollcommand=scrollbar.set
+)
+canvas.pack(side="left", fill="both", expand=True)
+scrollbar.config(command=canvas.yview)
+
+container = tk.Frame(canvas, bg=BG, padx=25, pady=20)
+content_window = canvas.create_window(
+    (0, 0), window=container, anchor="nw"
+)
+
+def update_scroll_region(event=None):
+    canvas.configure(scrollregion=canvas.bbox("all"))
+
+def resize_content(event):
+    canvas.itemconfigure(content_window, width=event.width)
+
+container.bind("<Configure>", update_scroll_region)
+canvas.bind("<Configure>", resize_content)
+
 
 tk.Label(
     container, text="OMG MINER",
@@ -83,7 +106,7 @@ tk.Label(
 
 timer = tk.Label(
     container,
-    text="02:00:00",
+    text="04:00:00",
     font=("Arial", 28, "bold"),
     bg=BG, fg=ACCENT
 )
@@ -99,12 +122,40 @@ status = tk.Label(
 )
 status.pack(pady=15)
 
+sadaqah_consent = tk.BooleanVar(value=False)
+
+tk.Checkbutton(
+    container,
+    text=(
+        "I agree: 3 hours for my wallet and "
+        "1 hour for Gaza Sadaqah.\n"
+        "75% / 25% mining time. "
+        "Rewards are not guaranteed."
+    ),
+    variable=sadaqah_consent,
+    bg=BG,
+    fg=FG,
+    selectcolor=BG,
+    activebackground=BG,
+    activeforeground=FG,
+    justify="left",
+    wraplength=440
+).pack(fill="x", pady=5)
+
 controller = MinerController()
 accepted = 0
 speed = "—"
+last_phase = "idle"
 
 def start_mining():
     global accepted, speed
+
+    if not sadaqah_consent.get():
+        messagebox.showwarning(
+            "Gaza Sadaqah Agreement",
+            "Please accept the mining-time allocation first."
+        )
+        return
 
     try:
         controller.start(
@@ -121,7 +172,7 @@ def start_mining():
     start_button.config(state="disabled")
     stop_button.config(state="normal")
     status.config(text="Starting XMRig...")
-    timer.config(text="02:00:00")
+    timer.config(text=f"{controller.LIMIT_SECONDS // 3600:02d}:{(controller.LIMIT_SECONDS // 60) % 60:02d}:{controller.LIMIT_SECONDS % 60:02d}")
 
 
 stop_pending = False
@@ -173,13 +224,21 @@ stop_button.pack(fill="x", pady=5)
 
 
 def refresh_status():
-    global accepted, speed, stop_pending
+    global accepted, speed, stop_pending, last_phase
 
     if stop_pending and shutdown_done.is_set():
         stop_pending = False
         shutdown_done.clear()
         start_button.config(state="normal")
         stop_button.config(state="disabled")
+
+    current_phase = controller.phase
+
+    if current_phase != last_phase:
+        if current_phase in ("user", "switching", "gaza"):
+            accepted = 0
+            speed = "—"
+        last_phase = current_phase
 
     while not controller.events.empty():
         kind, value = controller.events.get_nowait()
@@ -206,8 +265,19 @@ def refresh_status():
                           f"{(seconds//60)%60:02d}:"
                           f"{seconds%60:02d}")
 
+        phase = controller.phase
+
+        if phase == "user":
+            phase_text = "YOUR WALLET MINING"
+        elif phase == "gaza":
+            phase_text = "GAZA SADAQAH MINING"
+        elif phase == "switching":
+            phase_text = "SWITCHING TO GAZA WALLET"
+        else:
+            phase_text = "MINING STATUS"
+
         status.config(
-            text=f"Mining active\n"
+            text=f"{phase_text}\n"
                  f"Hashrate: {speed}\n"
                  f"Accepted shares: {accepted}"
         )
