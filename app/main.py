@@ -4,9 +4,9 @@ from miner_controller import MinerController
 import threading
 import webbrowser
 
-BG = "#101827"
+BG = "#0A131F"
 FG = "#ffffff"
-ACCENT = "#13a884"
+ACCENT = "#30DAA9"
 
 root = tk.Tk()
 root.title("OMG Windows Miner")
@@ -40,32 +40,89 @@ container.bind("<Configure>", update_scroll_region)
 canvas.bind("<Configure>", resize_content)
 
 
+
+# Official OMG logo, shared with the Android application.
+import sys
+from pathlib import Path
+
+if getattr(sys, "frozen", False):
+    logo_path = Path(sys._MEIPASS) / "app/assets/omg_logo_96.png"
+else:
+    logo_path = Path(__file__).resolve().parent / "assets/omg_logo_96.png"
+
+if logo_path.is_file():
+    omg_logo_image = tk.PhotoImage(file=str(logo_path))
+    tk.Label(
+        container,
+        image=omg_logo_image,
+        bg=BG
+    ).pack(pady=(4, 6))
+
 tk.Label(
-    container, text="OMG SADAQAH MINER",
+    container, text="OMG SADAQAH FOUNDATION",
     font=("Arial", 25, "bold"),
     bg=BG, fg=FG
 ).pack(pady=10)
 
 tk.Label(
     container,
-    text="Open Mining Gateway | Windows Edition",
+    text="MONERO MINER  •  GAZA SADAQAH",
     bg=BG, fg="#b8c9d9"
 ).pack(pady=5)
 
+
+wallet_card = tk.Frame(
+    container, bg="#173747",
+    padx=12, pady=12,
+    highlightbackground="#246F72",
+    highlightthickness=1
+)
+wallet_card.pack(fill="x", pady=(14, 8))
+
 tk.Label(
-    container,
-    text="Your Monero Wallet Address",
-    bg=BG, fg=FG
-).pack(pady=(20, 5))
+    wallet_card,
+    text="YOUR MONERO WALLET",
+    bg="#173747", fg=FG,
+    font=("Arial", 11, "bold")
+).pack(anchor="w", pady=(0, 8))
+
+wallet_row = tk.Frame(wallet_card, bg="#173747")
+wallet_row.pack(fill="x")
 
 wallet = tk.StringVar()
-tk.Entry(
-    container,
+
+wallet_entry = tk.Entry(
+    wallet_row,
     textvariable=wallet,
     font=("Arial", 11),
-    width=50
-).pack(fill="x", pady=5)
+    bg="#1B3040",
+    fg=FG,
+    insertbackground=FG,
+    relief="flat"
+)
+wallet_entry.pack(side="left", fill="x", expand=True, ipady=8)
 
+def paste_wallet():
+    try:
+        value = root.clipboard_get().strip()
+    except tk.TclError:
+        messagebox.showwarning(
+            "OMG Wallet", "Clipboard is empty."
+        )
+        return
+    wallet.set(value)
+
+tk.Button(
+    wallet_row,
+    text="PASTE",
+    command=paste_wallet,
+    bg="#224C58",
+    fg=FG,
+    font=("Arial", 10, "bold"),
+    relief="flat",
+    padx=12,
+    pady=8
+).pack(side="left", padx=(8, 0))
 
 def show_wallet_guide():
     instructions = (
@@ -134,41 +191,109 @@ tk.Scale(
 ).pack(fill="x")
 
 
-tk.Label(
-    container,
-    text="YOUR WALLET: 3 HOURS (75%)"
-         "    |    GAZA SADAQAH: 1 HOUR (25%)",
-    bg=BG,
-    fg=ACCENT,
-    font=("Arial", 9, "bold"),
-    wraplength=440,
-    justify="center"
-).pack(pady=(10, 5))
 
-tk.Label(
-    container,
-    text="Session Remaining",
-    font=("Arial", 12),
-    bg=BG, fg="#b8c9d9"
-).pack(pady=(15, 0))
-
-timer = tk.Label(
-    container,
-    text="04:00:00",
-    font=("Arial", 28, "bold"),
-    bg=BG, fg=ACCENT
+# Android-style live mining dashboard.
+dashboard = tk.Frame(
+    container, bg="#192D3F",
+    padx=12, pady=12,
+    highlightbackground="#246F72",
+    highlightthickness=1
 )
-timer.pack(pady=5)
+dashboard.pack(fill="x", pady=(12, 10))
+
+tk.Label(
+    dashboard,
+    text="LIVE MINING DASHBOARD",
+    bg="#192D3F",
+    fg="#35DCAA",
+    font=("Arial", 13, "bold")
+).pack(pady=(0, 8))
 
 status = tk.Label(
-    container,
-    text="Status: Ready to start\n"
-         "Hashrate: —\nAccepted shares: 0",
+    dashboard,
+    text="Status: Ready to start",
     font=("Arial", 11),
-    bg=BG, fg=FG,
-    justify="center"
+    bg="#192D3F",
+    fg=FG,
+    justify="center",
+    wraplength=430
 )
-status.pack(pady=15)
+status.pack(pady=(0, 10))
+
+stats_row = tk.Frame(dashboard, bg="#192D3F")
+stats_row.pack(fill="x")
+
+def create_stat_tile(title, initial):
+    tile = tk.Frame(
+        stats_row, bg="#254455",
+        padx=5, pady=10,
+        highlightbackground="#346273",
+        highlightthickness=1
+    )
+    tile.pack(side="left", fill="both",
+              expand=True, padx=3)
+
+    tk.Label(
+        tile, text=title,
+        bg="#254455",
+        fg="#AFCDD7",
+        font=("Arial", 9, "bold")
+    ).pack()
+
+    value = tk.Label(
+        tile, text=initial,
+        bg="#254455",
+        fg=FG,
+        font=("Arial", 13, "bold")
+    )
+    value.pack(pady=(5, 0))
+    return value
+
+speed_tile = create_stat_tile("HASHRATE", "—")
+shares_tile = create_stat_tile("SHARES", "0")
+timer = create_stat_tile("REMAINING", "04:00:00")
+
+
+# Mining-time allocation: 75% user, 25% Gaza.
+allocation_bar = tk.Frame(
+    container, bg="#203743", height=14
+)
+allocation_bar.pack(fill="x", pady=(8, 4))
+allocation_bar.pack_propagate(False)
+
+user_allocation = tk.Frame(
+    allocation_bar, bg="#17D397"
+)
+user_allocation.pack(
+    side="left", fill="both", expand=True
+)
+
+gaza_allocation = tk.Frame(
+    allocation_bar, bg="#F6B541"
+)
+gaza_allocation.pack(
+    side="left", fill="both"
+)
+
+def resize_allocation(event):
+    width = max(4, event.width)
+    user_allocation.pack_configure(
+        expand=False
+    )
+    user_allocation.configure(width=width * 3 // 4)
+    gaza_allocation.configure(
+        width=width - width * 3 // 4
+    )
+
+allocation_bar.bind("<Configure>", resize_allocation)
+
+tk.Label(
+    container,
+    text="YOUR WALLET 3 HOURS  •  GAZA SADAQAH 1 HOUR",
+    bg=BG,
+    fg="#3DE2AE",
+    font=("Arial", 10, "bold")
+).pack(pady=(0, 10))
 
 sadaqah_consent = tk.BooleanVar(value=False)
 
@@ -252,24 +377,64 @@ def stop_mining():
     ).start()
 
 
+
+# Android-style START / STOP action row.
+action_row = tk.Frame(container, bg=BG)
+action_row.pack(fill="x", pady=(8, 10))
+
 start_button = tk.Button(
-    container,
+    action_row,
     text="START MINING",
     command=start_mining,
-    bg=ACCENT,
+    bg="#118866",
     fg=FG,
-    font=("Arial", 11, "bold")
+    activebackground="#16A47C",
+    activeforeground=FG,
+    font=("Arial", 12, "bold"),
+    relief="flat",
+    padx=8,
+    pady=14
 )
-start_button.pack(fill="x", pady=5)
+start_button.pack(
+    side="left", fill="x", expand=True,
+    padx=(0, 5)
+)
 
 stop_button = tk.Button(
-    container,
+    action_row,
     text="STOP MINING",
     command=stop_mining,
-    state="disabled"
+    state="disabled",
+    bg="#A53B48",
+    fg=FG,
+    activebackground="#C34A59",
+    activeforeground=FG,
+    font=("Arial", 12, "bold"),
+    relief="flat",
+    padx=8,
+    pady=14
 )
-stop_button.pack(fill="x", pady=5)
+stop_button.pack(
+    side="left", fill="x", expand=True,
+    padx=(5, 0)
+)
 
+
+
+tk.Button(
+    container,
+    text="CHECK MINING EARNINGS",
+    command=lambda: webbrowser.open(
+        "https://hashvault.pro/monero/"
+    ),
+    bg="#224C58",
+    fg=FG,
+    activebackground="#346273",
+    activeforeground=FG,
+    font=("Arial", 11, "bold"),
+    relief="flat",
+    pady=11
+).pack(fill="x", pady=(5, 10))
 
 def refresh_status():
     global accepted, speed, stop_pending, last_phase
@@ -299,6 +464,9 @@ def refresh_status():
             status.config(text=str(value))
         elif kind == "status":
             status.config(text=str(value))
+
+    speed_tile.config(text=speed)
+    shares_tile.config(text=str(accepted))
 
     running = controller.is_running()
 

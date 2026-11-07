@@ -40,7 +40,7 @@ jobs:
 
       - name: Build OMG Windows EXE
         run: |
-          python -m PyInstaller --noconfirm --clean --onefile --windowed --name OMG-Windows-Miner --add-binary "vendor/xmrig.exe;." app/main.py
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name OMG-Windows-Miner --add-binary "vendor/xmrig.exe;." --add-data "app/assets/omg_logo_96.png;app/assets" app/main.py
 
       - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
