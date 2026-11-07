@@ -6,6 +6,7 @@ import re
 import subprocess
 import threading
 from pathlib import Path
+from sadaqah_config import GAZA_WALLET
 
 
 class MinerController:
@@ -20,6 +21,7 @@ class MinerController:
         self.started_at = None
         self._lock = threading.Lock()
         self._stopping = False
+        self._stop_requested = threading.Event()
         self.phase = "idle"
         self.user_wallet = None
         self.selected_threads = 3
@@ -30,6 +32,18 @@ class MinerController:
             getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)
         )
         return base / "xmrig.exe"
+
+    def _launch_xmrig(self, command, binary, flags):
+        """Launch one native XMRig process with existing settings."""
+        return subprocess.Popen(
+            command,
+            cwd=str(binary.parent),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            errors="replace",
+            creationflags=flags,
+        )
 
     def start(self, wallet, threads=3, mode="auto"):
         wallet = wallet.strip()
@@ -61,6 +75,8 @@ class MinerController:
                     "Miner is running or still stopping"
                 )
 
+            self._stop_requested.clear()
+
             command = [
                 str(binary),
                 "-o", "pool.hashvault.pro:443",
@@ -78,16 +94,11 @@ class MinerController:
 
             flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
-            process = subprocess.Popen(
-                command,
-                cwd=str(binary.parent),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                errors="replace",
-                creationflags=flags,
+            process = self._launch_xmrig(
+                command, binary, flags
             )
 
+            self._mining_command = list(command)
             self.process = process
             self.started_at = time.monotonic()
             self.phase = "user"
@@ -147,6 +158,86 @@ class MinerController:
         except Exception as exc:
             self.events.put(("error", str(exc)))
 
+    def _switch_to_gaza(self):
+        """Replace user XMRig only after its process exits."""
+        with self._lock:
+            if (
+                self.phase != "user"
+                or self.process is None
+                or self._stopping
+                or self._stop_requested.is_set()
+            ):
+                return False
+
+            old = self.process
+            self._stopping = True
+            self.phase = "switching"
+
+            command = list(self._mining_command)
+            command[command.index("-u") + 1] = GAZA_WALLET
+            binary = self.binary_path()
+            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+        new_process = None
+
+        try:
+            if old.poll() is None:
+                old.terminate()
+                try:
+                    old.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    old.kill()
+                    old.wait()
+
+            with self._lock:
+                if self.process is old:
+                    self.process = None
+
+            if self._stop_requested.is_set():
+                return False
+
+            with self._lock:
+                if self._stop_requested.is_set():
+                    return False
+
+                new_process = self._launch_xmrig(
+                    command, binary, flags
+                )
+                self.process = new_process
+                self.phase = "gaza"
+
+            threading.Thread(
+                target=self._read_output,
+                args=(new_process,),
+                daemon=True
+            ).start()
+
+            threading.Thread(
+                target=self._watch_session,
+                args=(new_process,),
+                daemon=True
+            ).start()
+
+            self.events.put((
+                "status", "Gaza Sadaqah mining started"
+            ))
+            return True
+
+        except Exception as error:
+            self.events.put((
+                "error", "Gaza handoff failed: " + str(error)
+            ))
+            return False
+
+        finally:
+            with self._lock:
+                if self.phase == "switching":
+                    self.phase = "idle"
+                self._stopping = False
+
+            if self._stop_requested.is_set():
+                self.stop("Stopped by user")
+
     def _watch_session(self, process):
         while True:
             with self._lock:
@@ -156,7 +247,21 @@ class MinerController:
                 remaining = self.remaining_seconds()
 
             if remaining <= 0:
-                self.stop("Two-hour session completed")
+                self.stop("Four-hour Sadaqah session completed")
+                return
+
+            with self._lock:
+                switch_due = (
+                    self.phase == "user"
+                    and not self._stopping
+                    and not self._stop_requested.is_set()
+                    and self.started_at is not None
+                    and time.monotonic() - self.started_at
+                        >= self.USER_SECONDS
+                )
+
+            if switch_due:
+                self._switch_to_gaza()
                 return
 
             time.sleep(1)
@@ -169,6 +274,7 @@ class MinerController:
         return max(0, int(self.LIMIT_SECONDS - elapsed))
 
     def stop(self, reason="Stopped by user"):
+        self._stop_requested.set()
         with self._lock:
             if self._stopping:
                 return
