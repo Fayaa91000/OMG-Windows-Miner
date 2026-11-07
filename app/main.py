@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from miner_controller import MinerController
 import threading
+import webbrowser
 
 BG = "#101827"
 FG = "#ffffff"
@@ -40,7 +41,7 @@ canvas.bind("<Configure>", resize_content)
 
 
 tk.Label(
-    container, text="OMG MINER",
+    container, text="OMG SADAQAH MINER",
     font=("Arial", 25, "bold"),
     bg=BG, fg=FG
 ).pack(pady=10)
@@ -64,6 +65,41 @@ tk.Entry(
     font=("Arial", 11),
     width=50
 ).pack(fill="x", pady=5)
+
+
+def show_wallet_guide():
+    instructions = (
+        "HOW TO CREATE YOUR MONERO WALLET\n\n"
+        "1. Open the official Monero wallet website.\n"
+        "2. Choose a wallet compatible with your device.\n"
+        "3. Create a new wallet.\n"
+        "4. Back up your recovery seed privately, offline.\n"
+        "5. Find your public Monero receiving address.\n"
+        "6. Copy it into OMG Miner.\n\n"
+        "Never share your recovery seed or private keys.\n"
+        "No central Monero account is required.\n\n"
+        "Open the official Monero wallet download page?"
+    )
+    if messagebox.askyesno("Monero Wallet Guide", instructions):
+        webbrowser.open("https://www.getmonero.org/downloads/")
+
+tk.Button(
+    container,
+    text="CREATE MONERO WALLET / GUIDE",
+    command=show_wallet_guide,
+    bg="#24364c",
+    fg=FG,
+    font=("Arial", 10, "bold"),
+    pady=7
+).pack(fill="x", pady=(3, 8))
+
+tk.Label(
+    container,
+    text="Use only your PUBLIC Monero receiving address.",
+    bg=BG,
+    fg="#b8c9d9",
+    wraplength=430
+).pack(pady=(0, 5))
 
 tk.Label(
     container, text="Mining Mode",
@@ -97,6 +133,18 @@ tk.Scale(
     highlightthickness=0
 ).pack(fill="x")
 
+
+tk.Label(
+    container,
+    text="YOUR WALLET: 3 HOURS (75%)"
+         "    |    GAZA SADAQAH: 1 HOUR (25%)",
+    bg=BG,
+    fg=ACCENT,
+    font=("Arial", 9, "bold"),
+    wraplength=440,
+    justify="center"
+).pack(pady=(10, 5))
+
 tk.Label(
     container,
     text="Session Remaining",
@@ -114,7 +162,7 @@ timer.pack(pady=5)
 
 status = tk.Label(
     container,
-    text="Status: Mining engine not connected\n"
+    text="Status: Ready to start\n"
          "Hashrate: —\nAccepted shares: 0",
     font=("Arial", 11),
     bg=BG, fg=FG,
