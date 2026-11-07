@@ -9,7 +9,10 @@ from pathlib import Path
 
 
 class MinerController:
-    LIMIT_SECONDS = 7200
+    # Production Sadaqah schedule
+    USER_SECONDS = 3 * 60 * 60
+    GAZA_SECONDS = 1 * 60 * 60
+    LIMIT_SECONDS = USER_SECONDS + GAZA_SECONDS
 
     def __init__(self):
         self.process = None
@@ -17,6 +20,10 @@ class MinerController:
         self.started_at = None
         self._lock = threading.Lock()
         self._stopping = False
+        self.phase = "idle"
+        self.user_wallet = None
+        self.selected_threads = 3
+        self.selected_mode = "auto"
 
     def binary_path(self):
         base = Path(
@@ -83,6 +90,10 @@ class MinerController:
 
             self.process = process
             self.started_at = time.monotonic()
+            self.phase = "user"
+            self.user_wallet = wallet
+            self.selected_threads = threads
+            self.selected_mode = mode
             self.events.put(("status", "Mining started"))
 
         threading.Thread(
@@ -128,6 +139,7 @@ class MinerController:
             with self._lock:
                 if self.process is process and not self._stopping:
                     self.process = None
+                    self.phase = "idle"
                     self.events.put((
                         "status",
                         f"XMRig exited (code {exit_code})"
@@ -184,6 +196,7 @@ class MinerController:
             with self._lock:
                 if self.process is process:
                     self.process = None
+                    self.phase = "idle"
 
                 self._stopping = False
 
