@@ -61,6 +61,49 @@ jobs:
         run: |
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "installer\OMG-Windows-Miner.iss"
 
+      - name: Self-sign OMG installer for testing
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $cert = New-SelfSignedCertificate `
+            -Type CodeSigningCert `
+            -Subject "CN=OMG Windows Miner Development TEST ONLY" `
+            -CertStoreLocation "Cert:\CurrentUser\My" `
+            -KeyAlgorithm RSA `
+            -KeyLength 3072 `
+            -HashAlgorithm SHA256 `
+            -NotAfter (Get-Date).AddMonths(3)
+
+          $sdk = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
+          $tool = Get-ChildItem $sdk -Filter signtool.exe -Recurse |
+            Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+            Select-Object -First 1
+
+          if (-not $tool) {
+            throw "Microsoft SignTool not found"
+          }
+
+          $exe = "dist-installer\OMG-Windows-Miner-Setup.exe"
+
+          & $tool.FullName sign /sha1 $cert.Thumbprint `
+            /s My /fd SHA256 $exe
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Signing failed"
+          }
+
+          $result = Get-AuthenticodeSignature $exe
+
+          if ($result.SignerCertificate.Thumbprint -ne $cert.Thumbprint) {
+            throw "Signature certificate mismatch"
+          }
+
+          Write-Host "PASS: OMG installer self-signed"
+          Write-Host "Certificate: $($cert.Subject)"
+          Write-Host "Trust status: $($result.Status)"
+          Write-Host "TEST SIGNATURE ONLY - NOT PUBLICLY TRUSTED"
+
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
