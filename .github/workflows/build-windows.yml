@@ -40,11 +40,19 @@ jobs:
 
       - name: Build OMG Windows EXE
         run: |
-          python -m PyInstaller --noconfirm --clean --onefile --windowed --name OMG-Windows-Miner --add-binary "vendor/xmrig.exe;." --add-data "app/assets/omg_logo_96.png;app/assets" app/main.py
+          python -m PyInstaller --noconfirm --clean --onedir --windowed --name OMG-Windows-Miner --add-binary "vendor/xmrig.exe;." --add-data "app/assets/omg_logo_96.png;app/assets" app/main.py
 
-      - name: Upload Windows EXE
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "installer\OMG-Windows-Miner.iss"
+
+      - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: OMG-Windows-Miner-Engine-Test
-          path: dist/OMG-Windows-Miner.exe
+          name: OMG-Windows-Miner-Installer-Test
+          path: dist-installer/OMG-Windows-Miner-Setup.exe
           if-no-files-found: error
