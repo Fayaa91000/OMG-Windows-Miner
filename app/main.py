@@ -316,12 +316,23 @@ tk.Checkbutton(
 ).pack(fill="x", pady=5)
 
 controller = MinerController()
+
+# Fail closed until engine verification is implemented.
+engine_security_approved = False
 accepted = 0
 speed = "—"
 last_phase = "idle"
 
 def start_mining():
     global accepted, speed
+
+    if not engine_security_approved:
+        messagebox.showwarning(
+            "OMG Security Check",
+            "Mining is blocked until XMRig verification "
+            "and Windows security checks succeed."
+        )
+        return
 
     if not sadaqah_consent.get():
         messagebox.showwarning(
@@ -378,6 +389,46 @@ def stop_mining():
 
 
 
+
+# Independent engine availability indicator.
+# File existence does not establish security approval.
+def engine_health_message():
+    try:
+        binary = controller.binary_path()
+        if not binary.is_file():
+            return (
+                "ENGINE UNAVAILABLE: XMRig was not found. "
+                "It may be uninstalled, moved or quarantined. "
+                "Check Windows Security > Protection history."
+            )
+
+        if not engine_security_approved:
+            return (
+                "ENGINE FOUND: Security verification "
+                "is still pending. Mining is disabled."
+            )
+
+        return "ENGINE AVAILABLE: Verification approved."
+
+    except Exception:
+        return (
+            "ENGINE STATUS UNKNOWN: Unable to check XMRig. "
+            "Mining remains disabled."
+        )
+
+
+engine_health_label = tk.Label(
+    container,
+    text=engine_health_message(),
+    bg=BG,
+    fg="#F0C674",
+    font=("Arial", 10),
+    justify="left",
+    wraplength=440
+)
+engine_health_label.pack(fill="x", pady=(5, 10))
+
+
 # Android-style START / STOP action row.
 action_row = tk.Frame(container, bg=BG)
 action_row.pack(fill="x", pady=(8, 10))
@@ -386,6 +437,7 @@ start_button = tk.Button(
     action_row,
     text="START MINING",
     command=start_mining,
+    state="disabled",
     bg="#118866",
     fg=FG,
     activebackground="#16A47C",
@@ -442,7 +494,7 @@ def refresh_status():
     if stop_pending and shutdown_done.is_set():
         stop_pending = False
         shutdown_done.clear()
-        start_button.config(state="normal")
+        start_button.config(state="normal" if engine_security_approved else "disabled")
         stop_button.config(state="disabled")
 
     current_phase = controller.phase
@@ -499,9 +551,10 @@ def refresh_status():
         )
 
     elif not stop_pending:
-        start_button.config(state="normal")
+        start_button.config(state="normal" if engine_security_approved else "disabled")
         stop_button.config(state="disabled")
 
+    engine_health_label.config(text=engine_health_message())
     root.after(1000, refresh_status)
 
 
