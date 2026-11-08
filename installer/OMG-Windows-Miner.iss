@@ -17,6 +17,10 @@ SolidCompression=yes
 [Files]
 Source: "..\dist\OMG-Windows-Miner\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+
+Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\third_party\xmrig\COPYING"; DestDir: "{app}\licenses\xmrig"; Flags: ignoreversion
+
 [Icons]
 Name: "{group}\OMG Windows Miner"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\OMG Windows Miner"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
