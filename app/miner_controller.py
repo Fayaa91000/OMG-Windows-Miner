@@ -28,6 +28,20 @@ class MinerController:
         self.selected_mode = "auto"
 
     def binary_path(self):
+        # Independent XMRig location for Windows.
+        if sys.platform == "win32":
+            local_appdata = os.environ.get("LOCALAPPDATA")
+            if local_appdata:
+                external = (
+                    Path(local_appdata)
+                    / "OMG Windows Miner"
+                    / "engine"
+                    / "xmrig.exe"
+                )
+                if external.is_file():
+                    return external
+
+        # Preserve compatibility with existing bundled builds.
         base = Path(
             getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)
         )
