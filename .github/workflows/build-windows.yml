@@ -50,6 +50,48 @@ jobs:
         run: |
           python -m PyInstaller --noconfirm --clean --onedir --windowed --name OMG-Windows-Miner --add-data "app/assets/omg_logo_96.png;app/assets" app/main.py
 
+      - name: Verify Windows dashboard package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $exe = "dist/OMG-Windows-Miner/OMG-Windows-Miner.exe"
+
+          if (-not (Test-Path $exe)) {
+            throw "OMG Windows executable missing"
+          }
+
+          Write-Host "PASS: Windows executable exists"
+
+          $bundled = Get-ChildItem "dist/OMG-Windows-Miner" `
+            -Filter "xmrig.exe" -Recurse -File
+
+          if ($bundled) {
+            throw "Unexpected bundled XMRig executable"
+          }
+
+          Write-Host "PASS: XMRig is not bundled"
+
+          @'
+          import sys
+          sys.path.insert(0, "app")
+
+          import engine_installer
+          import engine_verifier
+          import windows_security
+          import security_dialog
+          import security_flow
+          import installer_flow
+
+          print("PASS: Windows security modules import")
+          '@ | python -
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows module import check failed"
+          }
+
+          Write-Host "PASS: Windows package checks completed"
+
       - name: Install Inno Setup
         run: choco install innosetup --yes --no-progress
 
