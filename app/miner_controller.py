@@ -24,6 +24,7 @@ class MinerController:
         self._stop_requested = threading.Event()
         self.phase = "idle"
         self.user_wallet = None
+        self._approved_mining_command = None
         self.selected_threads = 3
         self.selected_mode = "auto"
 
@@ -142,6 +143,7 @@ class MinerController:
                 command, binary, flags
             )
 
+            self._approved_mining_command = tuple(command)
             self._mining_command = list(command)
             self.process = process
             self.started_at = time.monotonic()
