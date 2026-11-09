@@ -389,6 +389,21 @@ tk.Checkbutton(
 
 controller = MinerController()
 
+# User-approved independent XMRig installation.
+from installer_flow import request_engine_install
+
+tk.Button(
+    container,
+    text="INSTALL OFFICIAL XMRIG",
+    command=lambda: request_engine_install(
+        container, xmrig_install_consent.get()
+    ),
+    bg="#17644D",
+    fg=FG
+).pack(fill="x", pady=(4, 10))
+
+
+
 # Fail closed until engine verification is implemented.
 engine_security_approved = False
 accepted = 0
