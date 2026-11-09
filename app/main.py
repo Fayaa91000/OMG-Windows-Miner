@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from miner_controller import MinerController
+from engine_verifier import verify_engine
 import threading
 import webbrowser
 
@@ -395,24 +396,24 @@ def stop_mining():
 def engine_health_message():
     try:
         binary = controller.binary_path()
-        if not binary.is_file():
+        verified, result = verify_engine(binary)
+
+        if not verified:
             return (
-                "ENGINE UNAVAILABLE: XMRig was not found. "
-                "It may be uninstalled, moved or quarantined. "
-                "Check Windows Security > Protection history."
+                "ENGINE BLOCKED: " + result +
+                " Mining is disabled. If missing, check "
+                "Windows Security > Protection history."
             )
 
-        if not engine_security_approved:
-            return (
-                "ENGINE FOUND: Security verification "
-                "is still pending. Mining is disabled."
-            )
-
-        return "ENGINE AVAILABLE: Verification approved."
+        return (
+            "HASH VERIFIED: " + result +
+            " Windows security approval is still "
+            "required. Mining remains disabled."
+        )
 
     except Exception:
         return (
-            "ENGINE STATUS UNKNOWN: Unable to check XMRig. "
+            "ENGINE STATUS UNKNOWN: Verification failed. "
             "Mining remains disabled."
         )
 
