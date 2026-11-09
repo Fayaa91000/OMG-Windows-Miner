@@ -406,9 +406,135 @@ tk.Button(
 
 # Fail closed until engine verification is implemented.
 engine_security_approved = False
+
+def can_start_mining():
+    return (
+        engine_security_approved
+        and xmrig_install_consent.get()
+        and sadaqah_consent.get()
+        and not controller.is_running()
+    )
+
 accepted = 0
 speed = "—"
 last_phase = "idle"
+
+# Explicit security verification of the installed engine.
+def request_engine_approval():
+    global engine_security_approved
+
+    import os
+    import queue
+    from pathlib import Path
+    from engine_installer import file_hash, EXE_HASH
+    from windows_security import scan_engine
+    from security_dialog import show_security_result
+
+    engine_security_approved = False
+    start_button.config(state="disabled")
+
+    if not xmrig_install_consent.get():
+        messagebox.showwarning(
+            "XMRig Agreement",
+            "Accept the XMRig agreement first."
+        )
+        return
+
+    local = os.environ.get("LOCALAPPDATA")
+    if not local:
+        messagebox.showwarning(
+            "Windows Required",
+            "Security verification requires Windows."
+        )
+        return
+
+    binary = (
+        Path(local) / "OMG Windows Miner"
+        / "engine" / "xmrig.exe"
+    )
+
+    if binary.is_symlink() or not binary.is_file():
+        show_security_result(
+            root, "missing",
+            "Install the official XMRig engine first."
+        )
+        return
+
+    results = queue.Queue(maxsize=1)
+
+    verify_button.config(state="disabled")
+    status.config(text="Verifying XMRig and Windows Defender...")
+
+    def worker():
+        try:
+            if file_hash(binary) != EXE_HASH:
+                result = (
+                    "unknown",
+                    "XMRig checksum mismatch. Mining blocked."
+                )
+            else:
+                result = scan_engine(binary)
+
+                if result[0] == "scan_completed":
+                    if (
+                        binary.is_symlink()
+                        or not binary.is_file()
+                        or file_hash(binary) != EXE_HASH
+                    ):
+                        result = (
+                            "unknown",
+                            "Engine changed or disappeared after scan."
+                        )
+        except Exception:
+            result = (
+                "unknown",
+                "Unable to complete engine security verification."
+            )
+
+        results.put(result)
+
+    def poll():
+        global engine_security_approved
+
+        try:
+            result, detail = results.get_nowait()
+        except queue.Empty:
+            root.after(200, poll)
+            return
+
+        verify_button.config(state="normal")
+
+        engine_security_approved = (
+            result == "scan_completed"
+        )
+
+        if engine_security_approved:
+            start_button.config(state="normal" if can_start_mining() else "disabled")
+            status.config(
+                text="XMRig verified. Windows execution "
+                     "permission is still required."
+            )
+        else:
+            start_button.config(state="disabled")
+            status.config(text="Security verification incomplete.")
+            show_security_result(root, result, detail)
+
+    threading.Thread(
+        target=worker, daemon=True
+    ).start()
+
+    root.after(200, poll)
+
+
+verify_button = tk.Button(
+    container,
+    text="VERIFY XMRIG SECURITY",
+    command=request_engine_approval,
+    bg="#224C58",
+    fg=FG
+)
+verify_button.pack(fill="x", pady=(4, 10))
+
 
 def start_mining():
     global accepted, speed
@@ -591,7 +717,7 @@ def refresh_status():
     if stop_pending and shutdown_done.is_set():
         stop_pending = False
         shutdown_done.clear()
-        start_button.config(state="normal" if engine_security_approved else "disabled")
+        start_button.config(state="normal" if can_start_mining() else "disabled")
         stop_button.config(state="disabled")
 
     current_phase = controller.phase
@@ -648,7 +774,7 @@ def refresh_status():
         )
 
     elif not stop_pending:
-        start_button.config(state="normal" if engine_security_approved else "disabled")
+        start_button.config(state="normal" if can_start_mining() else "disabled")
         stop_button.config(state="disabled")
 
     global last_engine_health_check
