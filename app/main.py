@@ -406,6 +406,7 @@ tk.Button(
 
 # Fail closed until engine verification is implemented.
 engine_security_approved = False
+consent_revision = 0
 
 def can_start_mining():
     return (
@@ -431,6 +432,7 @@ def request_engine_approval():
     from security_dialog import show_security_result
 
     engine_security_approved = False
+    scan_revision = consent_revision
     start_button.config(state="disabled")
 
     if not xmrig_install_consent.get():
@@ -506,6 +508,9 @@ def request_engine_approval():
 
         engine_security_approved = (
             result == "scan_completed"
+            and scan_revision == consent_revision
+            and xmrig_install_consent.get()
+            and sadaqah_consent.get()
         )
 
         if engine_security_approved:
@@ -538,7 +543,8 @@ verify_button.pack(fill="x", pady=(4, 10))
 
 # Refresh START whenever either agreement changes.
 def update_start_permission():
-    global engine_security_approved
+    global engine_security_approved, consent_revision
+    consent_revision += 1
 
     consent_valid = (
         xmrig_install_consent.get()
