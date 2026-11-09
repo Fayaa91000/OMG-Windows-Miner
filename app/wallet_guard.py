@@ -28,3 +28,24 @@ def verify_command(actual, approved):
         )
 
     return True
+
+
+def verify_gaza_handoff(actual, approved):
+    """Allow only the scheduled wallet change to Gaza."""
+    from sadaqah_config import GAZA_WALLET
+
+    if not isinstance(approved, (list, tuple)):
+        raise WalletGuardError("Invalid approved command.")
+
+    if approved.count("-u") != 1:
+        raise WalletGuardError("Wallet option invalid.")
+
+    position = approved.index("-u") + 1
+
+    if position >= len(approved):
+        raise WalletGuardError("Wallet address missing.")
+
+    expected = list(approved)
+    expected[position] = GAZA_WALLET
+
+    return verify_command(actual, expected)
