@@ -48,7 +48,37 @@ class MinerController:
         return base / "xmrig.exe"
 
     def _launch_xmrig(self, command, binary, flags):
-        """Launch one native XMRig process with existing settings."""
+        """Launch only the verified official XMRig executable."""
+        import hashlib
+
+        expected = (
+            "6fa80698d7268f6e88aa88c06fb27ee99e1bcee747c"
+            "2e76911e6206a5b1aeeb3"
+        )
+
+        if binary.is_symlink() or not binary.is_file():
+            raise RuntimeError(
+                "XMRig engine missing or unsupported file link."
+            )
+
+        digest = hashlib.sha256()
+        with binary.open("rb") as stream:
+            for chunk in iter(
+                lambda: stream.read(1048576), b""
+            ):
+                digest.update(chunk)
+
+        if digest.hexdigest() != expected:
+            raise RuntimeError(
+                "XMRig SHA-256 verification failed. "
+                "Mining was not started."
+            )
+
+        if not command or str(command[0]) != str(binary):
+            raise RuntimeError(
+                "XMRig launch path does not match verified engine."
+            )
+
         return subprocess.Popen(
             command,
             cwd=str(binary.parent),
