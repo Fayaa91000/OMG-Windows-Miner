@@ -297,6 +297,62 @@ tk.Label(
     font=("Arial", 10, "bold")
 ).pack(pady=(0, 10))
 
+# Independent XMRig disclosure and installation consent.
+tk.Label(
+    container,
+    text="XMRig 6.26.0 - Independent Mining Engine",
+    bg=BG, fg="#3DE2AE",
+    font=("Arial", 11, "bold")
+).pack(fill="x", pady=(10, 4))
+
+tk.Label(
+    container,
+    text=(
+        "Developer: XMRig Project\n"
+        "License: GNU GPLv3\n"
+        "Git verification: See official GitHub release\n"
+        "Windows publisher signature: Unsigned"
+    ),
+    bg=BG, fg=FG,
+    justify="left",
+    wraplength=440
+).pack(fill="x", pady=4)
+
+tk.Button(
+    container,
+    text="VIEW XMRIG SOURCE AND RELEASE",
+    command=lambda: webbrowser.open(
+        "https://github.com/xmrig/xmrig/releases/tag/v6.26.0"
+    ),
+    bg="#224C58", fg=FG
+).pack(fill="x", pady=3)
+
+tk.Button(
+    container,
+    text="READ GNU GPLv3 LICENSE",
+    command=lambda: webbrowser.open(
+        "https://www.gnu.org/licenses/gpl-3.0.html"
+    ),
+    bg="#224C58", fg=FG
+).pack(fill="x", pady=3)
+
+xmrig_install_consent = tk.BooleanVar(value=False)
+
+tk.Checkbutton(
+    container,
+    text=(
+        "I understand XMRig is independent open-source "
+        "mining software, and I agree to install it."
+    ),
+    variable=xmrig_install_consent,
+    bg=BG, fg=FG,
+    selectcolor=BG,
+    activebackground=BG,
+    activeforeground=FG,
+    justify="left",
+    wraplength=440
+).pack(fill="x", pady=(8, 12))
+
 sadaqah_consent = tk.BooleanVar(value=False)
 
 tk.Checkbutton(
@@ -327,6 +383,14 @@ last_phase = "idle"
 
 def start_mining():
     global accepted, speed
+
+    if not xmrig_install_consent.get():
+        messagebox.showwarning(
+            "XMRig Installation Agreement",
+            "Please accept the independent XMRig "
+            "engine agreement first."
+        )
+        return
 
     if not engine_security_approved:
         messagebox.showwarning(
