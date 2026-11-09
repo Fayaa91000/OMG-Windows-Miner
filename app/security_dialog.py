@@ -95,14 +95,8 @@ def show_security_result(parent, status, detail="", retry=None):
 
     if status in ("detected", "missing"):
         tk.Button(
-            frame, text="VIEW WINDOWS SECURITY",
+            frame, text="MANAGE PERMISSION IN WINDOWS SECURITY",
             command=open_windows_security
-        ).pack(fill="x", pady=3)
-
-    if status == "detected":
-        tk.Button(
-            frame, text="REPORT INCORRECT DETECTION",
-            command=lambda: webbrowser.open(REVIEW_URL)
         ).pack(fill="x", pady=3)
 
     if status in ("unknown", "unavailable", "missing") and retry:
