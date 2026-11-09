@@ -92,6 +92,38 @@ jobs:
 
           Write-Host "PASS: Windows package checks completed"
 
+      - name: Smoke-test packaged OMG dashboard startup
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = Join-Path (Get-Location) "dist\OMG-Windows-Miner\OMG-Windows-Miner.exe"
+
+          if (-not (Test-Path -LiteralPath $exe)) {
+            throw "OMG packaged executable missing"
+          }
+
+          $process = Start-Process `
+            -FilePath $exe `
+            -WorkingDirectory (Split-Path $exe) `
+            -PassThru
+
+          try {
+            Start-Sleep -Seconds 8
+            $process.Refresh()
+
+            if ($process.HasExited) {
+              throw "OMG exited during startup: $($process.ExitCode)"
+            }
+
+            Write-Host "PASS: OMG process remained running"
+            Write-Host "No mining or XMRig installation requested"
+          }
+          finally {
+            if (-not $process.HasExited) {
+              & taskkill.exe /PID $process.Id /T /F | Out-Null
+            }
+          }
+
       - name: Install Inno Setup
         run: choco install innosetup --yes --no-progress
 
