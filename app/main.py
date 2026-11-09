@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 from miner_controller import MinerController
 from engine_verifier import verify_engine
 import threading
+import time
 import webbrowser
 
 BG = "#0A131F"
@@ -489,6 +490,8 @@ tk.Button(
     pady=11
 ).pack(fill="x", pady=(5, 10))
 
+last_engine_health_check = time.monotonic()
+
 def refresh_status():
     global accepted, speed, stop_pending, last_phase
 
@@ -555,7 +558,11 @@ def refresh_status():
         start_button.config(state="normal" if engine_security_approved else "disabled")
         stop_button.config(state="disabled")
 
-    engine_health_label.config(text=engine_health_message())
+    global last_engine_health_check
+    now = time.monotonic()
+    if now - last_engine_health_check >= 30:
+        engine_health_label.config(text=engine_health_message())
+        last_engine_health_check = now
     root.after(1000, refresh_status)
 
 
