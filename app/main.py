@@ -536,6 +536,24 @@ verify_button = tk.Button(
 verify_button.pack(fill="x", pady=(4, 10))
 
 
+# Refresh START whenever either agreement changes.
+def update_start_permission():
+    start_button.config(
+        state="normal" if can_start_mining() else "disabled"
+    )
+
+
+xmrig_install_consent.trace_add(
+    "write",
+    lambda *_: update_start_permission()
+)
+
+sadaqah_consent.trace_add(
+    "write",
+    lambda *_: update_start_permission()
+)
+
+
 def start_mining():
     global accepted, speed
 
