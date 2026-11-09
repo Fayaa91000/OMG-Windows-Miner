@@ -538,6 +538,23 @@ verify_button.pack(fill="x", pady=(4, 10))
 
 # Refresh START whenever either agreement changes.
 def update_start_permission():
+    global engine_security_approved
+
+    consent_valid = (
+        xmrig_install_consent.get()
+        and sadaqah_consent.get()
+    )
+
+    if not consent_valid:
+        engine_security_approved = False
+        start_button.config(state="disabled")
+
+        if controller.is_running() or controller.phase in (
+            "user", "switching", "gaza"
+        ):
+            stop_mining()
+        return
+
     start_button.config(
         state="normal" if can_start_mining() else "disabled"
     )
