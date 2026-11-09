@@ -201,7 +201,17 @@ jobs:
             }
 
             Write-Host "Scanning: $target"
-            Start-MpScan -ScanType CustomScan -ScanPath $target -ErrorAction Stop
+            try {
+              Start-MpScan -ScanType CustomScan -ScanPath $target -ErrorAction Stop
+            }
+            catch {
+              Write-Host "DEFENDER SCAN FAILURE DETAILS"
+              Write-Host "Message: $($_.Exception.Message)"
+              Write-Host "Exception type: $($_.Exception.GetType().FullName)"
+              Write-Host "HResult: $($_.Exception.HResult)"
+              Write-Host "Fully qualified ID: $($_.FullyQualifiedErrorId)"
+              throw
+            }
 
             if (-not (Test-Path -LiteralPath $target)) {
               throw "Scan target missing after Defender scan: $target"
