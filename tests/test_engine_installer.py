@@ -52,7 +52,7 @@ class EngineInstallerTests(unittest.TestCase):
         )
 
     def run_install(self, scan_status="scan_completed",
-                    zip_hash=None):
+                    zip_hash=None, scan_side_effect=None):
 
         with ExitStack() as stack:
             stack.enter_context(
@@ -87,7 +87,8 @@ class EngineInstallerTests(unittest.TestCase):
                 patch.object(
                     installer,
                     "scan_engine",
-                    return_value=(scan_status, "Test scan result")
+                    return_value=(scan_status, "Test scan result"),
+                    side_effect=scan_side_effect
                 )
             )
 
@@ -126,6 +127,20 @@ class EngineInstallerTests(unittest.TestCase):
         self.assertEqual(
             self.target.read_bytes(), self.exe_data
         )
+
+
+    def test_engine_removed_during_scan_prevents_install(self):
+        def remove_engine(path):
+            Path(path).unlink()
+            return "scan_completed", "Simulated Defender scan"
+
+        (status, _), scans = self.run_install(
+            scan_side_effect=remove_engine
+        )
+
+        self.assertEqual(status, "missing")
+        self.assertEqual(scans, 1)
+        self.assertFalse(self.target.exists())
 
 
 if __name__ == "__main__":
