@@ -353,6 +353,20 @@ tk.Checkbutton(
     wraplength=440
 ).pack(fill="x", pady=(8, 12))
 
+
+# User-requested Defender scan.
+from security_flow import request_security_scan
+
+tk.Button(
+    container,
+    text="SCAN XMRIG WITH WINDOWS DEFENDER",
+    command=lambda: request_security_scan(
+        container, controller.binary_path()
+    ),
+    bg="#224C58",
+    fg=FG
+).pack(fill="x", pady=(3, 12))
+
 sadaqah_consent = tk.BooleanVar(value=False)
 
 tk.Checkbutton(
